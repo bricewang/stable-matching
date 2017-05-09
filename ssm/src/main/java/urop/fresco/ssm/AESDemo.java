@@ -24,7 +24,7 @@
  * FRESCO uses SCAPI - http://crypto.biu.ac.il/SCAPI, Crypto++, Miracl, NTL,
  * and Bouncy Castle. Please see these projects for any further licensing issues.
  *******************************************************************************/
-package com.urop.fresco.ssm;
+package urop.fresco.ssm;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
