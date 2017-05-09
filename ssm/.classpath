@@ -12,7 +12,7 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/J2SE-1.5">
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
@@ -22,5 +22,8 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/brice/Documents/MIT/UROP/fresco/target/fresco-0.2-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="C:/Users/brice/Documents/MIT/UROP/fresco/lib/scapi/scapi/dfc8b2da384d87310c8f755b301bc085b1557671/scapi-dfc8b2da384d87310c8f755b301bc085b1557671.jar"/>
+	<classpathentry kind="lib" path="C:/Users/brice/Documents/MIT/UROP/fresco/lib/scapi/fastyao/b82956805dc9694d95d04e211c7bffab54294c21/fastyao-b82956805dc9694d95d04e211c7bffab54294c21.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
