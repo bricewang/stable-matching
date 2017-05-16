@@ -28,21 +28,38 @@ import java.math.BigInteger;
 
 /**
  * A partially secure implementation of the Gale-Shapley stable matching algorithm with single-party computation
+ * 
+ * Notes:
+ * Player 1 provides the suitor preferences, player 2 provides the reviewer preferences
+ * The preference matrix is now 3D, with entry sPrefs[i][j][k] equaling 1 when suitor i prefers reviewer j over reviewer k, 0 otherwise.
+ * 
  */
 public class ObliviousGaleShapley implements Application {
 	
 	private static final long serialVersionUID = 474747474747474747L;
 	
 	private int myId;
-	private int[][] ps, pr;
-	private SInt[][] sPrefs, rPrefs;
+	private int ns, nr;
+	private int[][][] prefs;
+	private SInt[][][] sPrefs, rPrefs;
 
 	public OInt[] sMatch, rMatch;
 	
-	public ObliviousGaleShapley(int id, int[][] ps, int[][] pr) {
+	public ObliviousGaleShapley(int id, int ns, int nr, int[][] prefList) {
 		this.myId = id;
-		this.ps = ps;
-		this.pr = pr;
+		int len1 = (myId == 1) ? ns : nr;
+		int len2 = (myId == 1) ? nr+1 : ns+1;
+		this.prefs = new int[len1][len2][len2];
+        for (int i = 0; i < ns; i++) {
+            for (int j = 0; j < prefList.length; j++) {
+        		int curr = prefList[i][j];
+            	for (int k = 1; k <= nr; k++) {
+            		if (prefs[i][k][curr] == 0) {
+            			prefs[i][curr][k] = 1;
+            		}
+            	}
+            }
+        }
 	}
 
 	@Override
@@ -50,15 +67,22 @@ public class ObliviousGaleShapley implements Application {
 		BasicNumericFactory bnFac = (BasicNumericFactory)factory;
 		NumericProtocolBuilder npb = new NumericProtocolBuilder(bnFac);
 		NumericIOBuilder iob = new NumericIOBuilder(bnFac);
+		int[] matches = new int[(myId == 1) ? ns : nr];
 
 		// Input preferences, initialize matchings to 0
 		iob.beginParScope();
-			sPrefs = iob.inputMatrix(ps, myId);
-			rPrefs = iob.inputMatrix(pr, myId);
-			int[] emptyS = new int[ps.length];
-			int[] emptyR = new int[pr.length];
-			SInt[] s = iob.inputArray(emptyS, myId);
-			SInt[] r = iob.inputArray(emptyR, myId);
+			sPrefs = new SInt[ns][][];
+			rPrefs = new SInt[nr][][];
+			for (int i = 0; i < ns; i++) {
+				sPrefs[i] = (myId == 1) ? iob.inputMatrix(prefs[i], 1) : iob.inputMatrix(nr + 1, nr + 1, 1);
+			}
+			for (int i = 0; i < nr; i++) {
+				rPrefs[i] = (myId == 2) ? iob.inputMatrix(prefs[i], 2) : iob.inputMatrix(ns + 1, ns + 1, 2);
+			}
+			SInt[] s = (myId == 1) ? iob.inputArray(matches, 1) : iob.inputArray(ns, 1);
+			SInt[] r = (myId == 2) ? iob.inputArray(matches, 2) : iob.inputArray(nr, 2);
+//			OInt[] s = iob.outputArray((myId == 1) ? iob.inputArray(matches, 1) : iob.inputArray(ns, 1));
+//			OInt[] r = iob.outputArray((myId == 2) ? iob.inputArray(matches, 2) : iob.inputArray(nr, 2));
 		iob.endCurScope();
 
 		for (int t = 0; t < sPrefs.length; t++) {
@@ -66,8 +90,10 @@ public class ObliviousGaleShapley implements Application {
 				for (int j = 0; j < rPrefs.length; j++) {
 					// TODO: make protocol that sets c to 1 if sPrefs[i][j + 1] > sPrefs[i][s[i]] && rPrefs[j][i + 1] > rPrefs[j][r[j]]
 					npb.beginSeqScope();
-					SInt c = iob.input((iob.output(npb.sub(sPrefs[i][j + 1], sPrefs[i][iob.output(s[i]).getValue().intValue()])).getValue().compareTo(BigInteger.ZERO) > 0 ? 1 : 0) *
-							(iob.output(npb.sub(rPrefs[j][i + 1], rPrefs[j][iob.output(r[j]).getValue().intValue()])).getValue().compareTo(BigInteger.ZERO) > 0 ? 1 : 0), myId);
+					// TODO: How do I index by a SInt?
+					SInt sSwap = (myId == 1) ? sPrefs[i][j + 1][s[i]] : iob.input(1); // Issue 1: cannot index with SInt or open the SInt to all parties
+					SInt rSwap = (myId == 2) ? rPrefs[j][i + 1][r[j]] : iob.input(2);
+					SInt c = npb.mult(sSwap, rSwap);
 					// TODO: fix issue of updating discarded suitors/reviewers that Sandeep mentioned
 					s[i] = npb.add(npb.mult(c, npb.sub(iob.input(j + 1, myId), s[i])), s[i]);
 					r[j] = npb.add(npb.mult(c, npb.sub(iob.input(i + 1, myId), r[j])), r[j]);
@@ -79,7 +105,7 @@ public class ObliviousGaleShapley implements Application {
 		iob.addProtocolProducer(npb.getProtocol());
 
 		// Output result
-		sMatch = iob.outputArray(s);
+		sMatch = iob.outputArray(s); // Issue 2: currently provides suitor and reviewer matches to both parties
 		rMatch = iob.outputArray(r);
 		return iob.getProtocol();
 	}
@@ -97,20 +123,11 @@ public class ObliviousGaleShapley implements Application {
 			cmdUtil.displayHelp();
 			System.exit(-1);	
 		}
-		int n = 3;
-		int[][] sInput = {{1, 2, 3}, {2, 3, 1}, {1, 3, 2}};
-        int[][] rInput = {{2, 3, 1}, {3, 1, 2}, {2, 1, 3}};
-        int[][] ps = new int[n][n + 1];
-        int[][] pr = new int[n][n + 1];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < sInput.length; j++) {
-                ps[i][sInput[i][j]] = n - j;
-            }
-            for (int j = 0; j < rInput.length; j++) {
-                pr[i][rInput[i][j]] = n - j;
-            }
-        }
-		ObliviousGaleShapley gs = new ObliviousGaleShapley(sceConf.getMyId(), ps, pr);
+		int ns = 3;
+		int nr = 3;
+		int[][] prefList = {{1, 2, 3}, {2, 3, 1}, {1, 3, 2}};
+        
+		ObliviousGaleShapley gs = new ObliviousGaleShapley(sceConf.getMyId(), ns, nr, prefList);
 		SCE sce = SCEFactory.getSCEFromConfiguration(sceConf);
 		try {
 			sce.runApplication(gs);
@@ -121,11 +138,11 @@ public class ObliviousGaleShapley implements Application {
 		}
 
 		System.out.println("Suitor matches:");
-		for (int i = 0; i < n; i++) {
+		for (int i = 0; i < ns; i++) {
 			System.out.print(gs.sMatch[i].getValue().intValue() + "\t");
 		}
 		System.out.println("\nReviewer matches:");
-		for (int i = 0; i < n; i++) {
+		for (int i = 0; i < ns; i++) {
 			System.out.print(gs.rMatch[i].getValue().intValue() + "\t");
 		}
 		System.out.println();
