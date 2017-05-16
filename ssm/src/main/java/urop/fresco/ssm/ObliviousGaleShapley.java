@@ -1,7 +1,7 @@
 /*
  * CURRENT ISSUES:
- * Only the BGW protocol suite supports arithmetic operations natively, but cannot function in single-party computation
- * Integer comparison needs to be properly implemented
+ * Unable to index array with SInt value
+ * sMatch and rMatch are not set properly (array lengths of 0)
  * Discarded suitors/reviewers do not seem to be updated properly
 */
 
@@ -23,8 +23,6 @@ import dk.alexandra.fresco.framework.value.SInt;
 import dk.alexandra.fresco.lib.field.integer.BasicNumericFactory;
 import dk.alexandra.fresco.lib.helper.builder.NumericIOBuilder;
 import dk.alexandra.fresco.lib.helper.builder.NumericProtocolBuilder;
-
-import java.math.BigInteger;
 
 /**
  * A partially secure implementation of the Gale-Shapley stable matching algorithm with single-party computation
@@ -91,8 +89,8 @@ public class ObliviousGaleShapley implements Application {
 					// TODO: make protocol that sets c to 1 if sPrefs[i][j + 1] > sPrefs[i][s[i]] && rPrefs[j][i + 1] > rPrefs[j][r[j]]
 					npb.beginSeqScope();
 					// TODO: How do I index by a SInt?
-					SInt sSwap = (myId == 1) ? sPrefs[i][j + 1][s[i]] : iob.input(1); // Issue 1: cannot index with SInt or open the SInt to all parties
-					SInt rSwap = (myId == 2) ? rPrefs[j][i + 1][r[j]] : iob.input(2);
+					SInt sSwap = (myId == 1) ? sPrefs[i][j + 1][iob.output(s[i]).getValue().intValue()] : iob.input(1); // Issue 1: cannot index with SInt or open the SInt to all parties
+					SInt rSwap = (myId == 2) ? rPrefs[j][i + 1][iob.output(r[j]).getValue().intValue()] : iob.input(2);
 					SInt c = npb.mult(sSwap, rSwap);
 					// TODO: fix issue of updating discarded suitors/reviewers that Sandeep mentioned
 					s[i] = npb.add(npb.mult(c, npb.sub(iob.input(j + 1, myId), s[i])), s[i]);
@@ -137,14 +135,19 @@ public class ObliviousGaleShapley implements Application {
 			System.exit(-1);
 		}
 
-		System.out.println("Suitor matches:");
-		for (int i = 0; i < ns; i++) {
-			System.out.print(gs.sMatch[i].getValue().intValue() + "\t");
+		if (gs.sMatch == null) {
+			System.out.println("big oops");
+		} else {
+			System.out.println(gs.sMatch.length);
 		}
-		System.out.println("\nReviewer matches:");
-		for (int i = 0; i < ns; i++) {
-			System.out.print(gs.rMatch[i].getValue().intValue() + "\t");
-		}
+		// System.out.println("Suitor matches:");
+		// for (int i = 0; i < ns; i++) {
+		// 	System.out.print(gs.sMatch[i].getValue().intValue() + "\t");
+		// }
+		// System.out.println("\nReviewer matches:");
+		// for (int i = 0; i < ns; i++) {
+		// 	System.out.print(gs.rMatch[i].getValue().intValue() + "\t");
+		// }
 		System.out.println();
 	}
 }
